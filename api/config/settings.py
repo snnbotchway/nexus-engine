@@ -9,9 +9,10 @@ https://docs.djangoproject.com/en/4.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
+import os
+from typing import List
 
 import environ
-import os
 
 env = environ.Env(
     # set casting, default value
@@ -31,8 +32,7 @@ DEBUG = env("DEBUG")
 # exception if SECRET_KEY not in os.environ
 SECRET_KEY = env("SECRET_KEY")
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS: List[str] = []
 
 # Application definition
 
@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Local apps
+    "core.apps.CoreConfig",
 ]
 
 MIDDLEWARE = [
