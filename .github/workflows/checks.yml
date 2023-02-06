@@ -16,8 +16,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install pre-commit
-        run: pip install pre-commit
+      - name: Install dependencies
+        run: pip install -r requirements.txt && pip install -r requirements.dev.txt
 
       - name: Install pre-commit hooks
         run: pre-commit install
