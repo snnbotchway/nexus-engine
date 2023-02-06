@@ -23,6 +23,9 @@ jobs:
         run: pre-commit install
 
       - name: Run pre-commit
+        env:
+          DEBUG: True
+          SECRET_KEY: change_me
         run: pre-commit run --all-files
 
   test:
