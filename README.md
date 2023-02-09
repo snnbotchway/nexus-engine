@@ -14,7 +14,7 @@ Run the services :
 
 `docker compose up`
 
-This will start the API app and database services for development.
+This will start the API app, database and SMTP services for development.
 
 ### Virtual environments
 
@@ -29,6 +29,16 @@ Create a `.env` file inside the `api/` directory and configure the required envi
 `SECRET_KEY` should be a random string.
 
 `DEBUG` should be set to `True` since you're setting up a development environment.
+
+The following applies to your development SMTP server:
+
+`EMAIL_HOST` should be set to the host of the server.
+
+`EMAIL_HOST_USER` should be set to the user of the SMTP server.
+
+`EMAIL_HOST_PASSWORD` should be set to `EMAIL_HOST_USER`'s password.
+
+`EMAIL_PORT` should be set to the port the server is running on.
 
 **Install the PostgreSQL development library on your system:**
 
