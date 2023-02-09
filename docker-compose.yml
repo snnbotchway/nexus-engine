@@ -20,11 +20,20 @@ services:
       - DATABASE_URL=postgresql://devuser:changeme@db:5432/devdb
       - IS_DOCKER=1
       - SECRET_KEY=changeme
+      - EMAIL_HOST=smtp4dev
+      - EMAIL_HOST_USER=
+      - EMAIL_HOST_PASSWORD=
+      - EMAIL_PORT=25
+      - DEFAULT_FROM_EMAIL=from@snnbotchway.com
+      - CLIENT_DOMAIN=client_url.com
     depends_on:
       - db
+      - smtp4dev
 
   db:
     image: postgres:13-alpine
+    ports:
+      - 6432:5432
     volumes:
       - dev-db-data:/var/lib/postgresql/data
     environment:
@@ -32,6 +41,15 @@ services:
       - POSTGRES_USER=devuser
       - POSTGRES_PASSWORD=changeme
 
+  smtp4dev:
+    image: rnwood/smtp4dev
+    ports:
+      - "3000:80"
+      - "2525:25"
+    volumes:
+      - smtp4dev-data:/smtp4dev
+
 volumes:
   dev-db-data:
   dev-static-data:
+  smtp4dev-data:
