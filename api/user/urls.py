@@ -1,6 +1,5 @@
 """URL configurations for the user app."""
-from django.urls import include
-from django.urls import path
+from django.urls import include, path
 
 app_name = "user"
 
