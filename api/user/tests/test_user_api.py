@@ -442,7 +442,7 @@ class TestUser:
         assert response.data == serializer.data
         assert sample_user.first_name == payload.get("first_name")
         assert sample_user.is_active
-        # assert len(mail.outbox) == 0 # TODO: Uncomment after djoser update
+        assert len(mail.outbox) == 0
 
     def test_update_email_deactivates_user(self, api_client, sample_user):
         """Test user is deactivated and email is sent on email update."""
@@ -476,7 +476,7 @@ class TestUser:
         assert response.data == serializer.data
         assert sample_user.email == payload.get("email")
         assert sample_user.is_active
-        # assert len(mail.outbox) == 0 # TODO: Uncomment after djoser update
+        assert len(mail.outbox) == 0
 
     def test_anonymous_user_full_update_profile_returns_401(
         self, api_client, sample_user
