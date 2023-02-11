@@ -42,7 +42,9 @@ class TestGoogleAuth:
         response = api_client.get(url)
 
         assert response.status_code == 400
-        assert not response.data
+        assert (
+            response.data == "redirect_uri must be in SOCIAL_AUTH_ALLOWED_REDIRECT_URIS"
+        )
 
     def test_final_google_authentication_successful(self, api_client, mocker):
         """Test final authentication process is successful."""
