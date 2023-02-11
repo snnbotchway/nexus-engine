@@ -75,12 +75,9 @@ class TestUserModel:
         """Test creating user without first name raises an error."""
         sample_payload.update({"first_name": None})
 
-        with pytest.raises(ValidationError) as excinfo:
-            User.objects.create_user(**sample_payload)
-        assert (
-            str(excinfo.value.message_dict["first_name"][0])
-            == "This field is required."
-        )
+        with transaction.atomic():
+            with pytest.raises(IntegrityError):
+                User.objects.create_user(**sample_payload)
         assert User.objects.all().count() == 0
 
     def test_create_user_with_existing_username_fails(self, sample_payload):
