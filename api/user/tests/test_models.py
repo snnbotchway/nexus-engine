@@ -14,7 +14,8 @@ def sample_payload():
         "username": "sample_username",
         "email": "user@example.com",
         "password": "test_pass_123",
-        "name": "Sample name",
+        "first_name": "First name",
+        "last_name": "Last name",
     }
 
 
@@ -26,7 +27,8 @@ class TestUserModel:
 
         assert user.username == sample_payload.get("username")
         assert user.email == sample_payload.get("email")
-        assert user.name == sample_payload.get("name")
+        assert user.first_name == sample_payload.get("first_name")
+        assert user.last_name == sample_payload.get("last_name")
         assert not user.is_staff
         assert not user.is_superuser
         assert user.check_password(sample_payload.get("password"))
@@ -45,7 +47,7 @@ class TestUserModel:
             user = User.objects.create_user(
                 username=expected,
                 email=email,
-                name="Sample name",
+                first_name="Sample first name",
                 password="testPass12345",
             )
 
@@ -69,37 +71,15 @@ class TestUserModel:
         assert str(excinfo.value.message_dict["email"][0]) == "This field is required."
         assert User.objects.all().count() == 0
 
-    def test_create_user_missing_name_fails(self, sample_payload):
-        """Test creating user without name raises an error."""
-        sample_payload.update({"name": None})
+    def test_create_user_missing_first_name_fails(self, sample_payload):
+        """Test creating user without first name raises an error."""
+        sample_payload.update({"first_name": None})
 
         with pytest.raises(ValidationError) as excinfo:
             User.objects.create_user(**sample_payload)
-        assert str(excinfo.value.message_dict["name"][0]) == "This field is required."
-        assert User.objects.all().count() == 0
-
-    def test_create_user_with_first_name_fails(self, sample_payload):
-        """Test creating user with first_name raises an error."""
-        sample_payload.update({"first_name": "Sample first name"})
-
-        with pytest.raises(TypeError) as excinfo:
-            User.objects.create_user(**sample_payload)
-
         assert (
-            str(excinfo.value)
-            == "User() got unexpected keyword arguments: 'first_name'"
-        )
-        assert User.objects.all().count() == 0
-
-    def test_create_user_with_last_name_fails(self, sample_payload):
-        """Test creating user with last_name raises an error."""
-        sample_payload.update({"last_name": "Sample last name"})
-
-        with pytest.raises(TypeError) as excinfo:
-            User.objects.create_user(**sample_payload)
-
-        assert (
-            str(excinfo.value) == "User() got unexpected keyword arguments: 'last_name'"
+            str(excinfo.value.message_dict["first_name"][0])
+            == "This field is required."
         )
         assert User.objects.all().count() == 0
 
