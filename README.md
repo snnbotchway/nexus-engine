@@ -1,4 +1,4 @@
-# nexus-engine
+# Nexus Engine
 
 This repository contains the backend code for Nexus.
 
@@ -10,11 +10,17 @@ There are two options for this; docker or a virtual environment:
 
 If you wish to use docker, you should install and set up docker desktop for your operating system.
 
+Create a `.env` file at the base directory and configure the required environment variables following the format in the `.env.sample` also in the base directory.
+
+`SOCIAL_AUTH_GOOGLE_OAUTH2_KEY` should be the Google OAuth2 client ID of this application.
+
+`SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET` should be the Google OAuth2 client secret of this application.
+
 Run the services :
 
 `docker compose up`
 
-This will start the API app, database and SMTP services for development.
+This will start the API app, database and SMTP services for development on localhost ports 8000, 6432 and 2525 respectively. The client for the smtp4dev server will be on port 3001 by default.
 
 ### Virtual environments
 
@@ -29,6 +35,14 @@ Create a `.env` file inside the `api/` directory and configure the required envi
 `SECRET_KEY` should be a random string.
 
 `DEBUG` should be set to `True` since you're setting up a development environment.
+
+`CORS_ALLOWED_ORIGINS` should be a comma-separated list of allowed origins; for testing with a client.
+
+`SOCIAL_AUTH_ALLOWED_REDIRECT_URIS` should be a comma-separated list of allowed redirect URIs that have been specified in the Google OAuth2 project of this application.
+
+`SOCIAL_AUTH_GOOGLE_OAUTH2_KEY` should be the Google OAuth2 client ID of this application.
+
+`SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET` should be the Google OAuth2 client secret of this application.
 
 The following applies to your development SMTP server:
 

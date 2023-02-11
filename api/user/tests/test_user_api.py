@@ -41,7 +41,8 @@ def sample_user():
         username="some_user_name",
         email="someemail@example.com",
         password="some password",
-        name="some name",
+        first_name="first name",
+        last_name="last name",
     )
 
 
@@ -57,7 +58,8 @@ def user_payload():
     return {
         "username": "sample_user_name",
         "email": "user@example.com",
-        "name": "Sample name",
+        "first_name": "first name",
+        "last_name": "last name",
         "password": "test_pass123",
         "re_password": "test_pass123",
     }
@@ -89,7 +91,8 @@ class TestUserCreate:
         assert response.status_code == status.HTTP_201_CREATED
         assert created_user.username == user_payload.get("username")
         assert created_user.email == user_payload.get("email")
-        assert created_user.name == user_payload.get("name")
+        assert created_user.first_name == user_payload.get("first_name")
+        assert created_user.last_name == user_payload.get("last_name")
         assert not created_user.is_active
         assert created_user.check_password(user_payload.get("password"))
         # Make sure the password is not returned to the user:
@@ -99,17 +102,33 @@ class TestUserCreate:
         assert mail.outbox[0].to == [created_user.email]
         assert mail.outbox[0].from_email == settings.DEFAULT_FROM_EMAIL
 
-    def test_create_user_if_name_exists_returns_201(
+    def test_create_user_if_first_name_exists_returns_201(
         self, api_client, sample_user, user_payload
     ):
-        """Test creating a user with existing name is successful."""
-        user_payload.update({"name": sample_user.name})
+        """Test creating a user with existing first_name is successful."""
+        user_payload.update({"first_name": sample_user.first_name})
 
         response = api_client.post(USER_CREATE_URL, user_payload)
 
         created_user = User.objects.get(username=user_payload.get("username"))
         assert response.status_code == status.HTTP_201_CREATED
-        assert created_user.name == user_payload.get("name")
+        assert created_user.first_name == user_payload.get("first_name")
+        assert User.objects.all().count() == 2
+        assert len(mail.outbox) == 1
+        assert mail.outbox[0].to == [created_user.email]
+        assert mail.outbox[0].from_email == settings.DEFAULT_FROM_EMAIL
+
+    def test_create_user_if_last_name_exists_returns_201(
+        self, api_client, sample_user, user_payload
+    ):
+        """Test creating a user with existing last_name is successful."""
+        user_payload.update({"last_name": sample_user.last_name})
+
+        response = api_client.post(USER_CREATE_URL, user_payload)
+
+        created_user = User.objects.get(username=user_payload.get("username"))
+        assert response.status_code == status.HTTP_201_CREATED
+        assert created_user.last_name == user_payload.get("last_name")
         assert User.objects.all().count() == 2
         assert len(mail.outbox) == 1
         assert mail.outbox[0].to == [created_user.email]
@@ -167,14 +186,14 @@ class TestUserCreate:
         assert User.objects.all().count() == 0
         assert len(mail.outbox) == 0
 
-    def test_create_user_without_name_returns_400(self, api_client, user_payload):
-        """Test create user without a name returns error."""
-        user_payload.update({"name": ""})
+    def test_create_user_without_first_name_returns_400(self, api_client, user_payload):
+        """Test create user without a first_name returns error."""
+        user_payload.update({"first_name": ""})
 
         response = api_client.post(USER_CREATE_URL, user_payload)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data.get("name") == REQUIRED_FIELD_ERROR
+        assert response.data.get("first_name") == REQUIRED_FIELD_ERROR
         assert User.objects.all().count() == 0
         assert len(mail.outbox) == 0
 
@@ -394,7 +413,7 @@ class TestUser:
         api_client.force_authenticate(user=sample_user)
         payload = {
             "email": "user@example.com",
-            "name": "Sample name",
+            "first_name": "Sample first_name",
         }
 
         response = api_client.put(USER_URL, payload)
@@ -404,7 +423,7 @@ class TestUser:
         serializer = UserSerializer(sample_user)
         assert response.data == serializer.data
         assert sample_user.email == payload.get("email")
-        assert sample_user.name == payload.get("name")
+        assert sample_user.first_name == payload.get("first_name")
         assert not sample_user.is_active
         assert len(mail.outbox) == 1
         assert mail.outbox[0].to == [sample_user.email]
@@ -413,7 +432,7 @@ class TestUser:
     def test_partial_update_user(self, api_client, sample_user):
         """Test partial update user successful."""
         api_client.force_authenticate(user=sample_user)
-        payload = {"name": "Sample name"}
+        payload = {"first_name": "Sample name"}
 
         response = api_client.patch(USER_URL, payload)
 
@@ -421,9 +440,9 @@ class TestUser:
         sample_user.refresh_from_db()
         serializer = UserSerializer(sample_user)
         assert response.data == serializer.data
-        assert sample_user.name == payload.get("name")
+        assert sample_user.first_name == payload.get("first_name")
         assert sample_user.is_active
-        # assert len(mail.outbox) == 0 # TODO: Uncomment after djoser update
+        assert len(mail.outbox) == 0
 
     def test_update_email_deactivates_user(self, api_client, sample_user):
         """Test user is deactivated and email is sent on email update."""
@@ -457,17 +476,17 @@ class TestUser:
         assert response.data == serializer.data
         assert sample_user.email == payload.get("email")
         assert sample_user.is_active
-        # assert len(mail.outbox) == 0 # TODO: Uncomment after djoser update
+        assert len(mail.outbox) == 0
 
     def test_anonymous_user_full_update_profile_returns_401(
         self, api_client, sample_user
     ):
         """Test anonymous user cannot perform full update."""
         old_email = sample_user.email
-        old_name = sample_user.name
+        old_name = sample_user.first_name
         payload = {
             "email": "user@example.com",
-            "name": "Sample name",
+            "first_name": "Sample name",
         }
 
         response = api_client.put(USER_URL, payload)
@@ -481,7 +500,7 @@ class TestUser:
         serializer = UserSerializer(sample_user)
         assert response.data != serializer.data
         assert sample_user.email == old_email
-        assert sample_user.name == old_name
+        assert sample_user.first_name == old_name
         assert sample_user.is_active
         assert len(mail.outbox) == 0
 
