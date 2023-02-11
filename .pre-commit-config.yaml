@@ -23,12 +23,13 @@ repos:
         name: Run type checks
         args:
           ["--ignore-missing-imports", "--install-types", "--non-interactive"]
+        exclude: (migrations|djoser)
   - repo: https://github.com/pycqa/pydocstyle
     rev: 6.3.0
     hooks:
       - id: pydocstyle
         args: ["--add-ignore=D203"]
-        exclude: migrations/.*\.py
+        exclude: (migrations|djoser)
   - repo: https://github.com/PyCQA/flake8
     rev: 6.0.0
     hooks:
