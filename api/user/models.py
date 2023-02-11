@@ -27,6 +27,4 @@ class User(AbstractUser):
         """Validate email and name, then save."""
         if not self.email:
             raise ValidationError({"email": "This field is required."})
-        if not self.first_name:
-            raise ValidationError({"first_name": "This field is required."})
         super().save(*args, **kwargs)
