@@ -8,19 +8,15 @@ from django.utils.translation import gettext_lazy as _
 class User(AbstractUser):
     """Custom user model for this project."""
 
-    name = models.CharField(
-        _("name"),
-        max_length=150,
-        blank=False,
-        null=False,
-    )
     email = models.EmailField(_("email address"), blank=False, null=False, unique=True)
-    first_name = None
-    last_name = None
+    first_name = models.CharField(
+        _("first name"), max_length=150, blank=False, null=False
+    )
 
     REQUIRED_FIELDS = [
         "email",
-        "name",
+        "first_name",
+        "last_name",
     ]
 
     def __str__(self):
@@ -31,6 +27,6 @@ class User(AbstractUser):
         """Validate email and name, then save."""
         if not self.email:
             raise ValidationError({"email": "This field is required."})
-        if not self.name:
-            raise ValidationError({"name": "This field is required."})
+        if not self.first_name:
+            raise ValidationError({"first_name": "This field is required."})
         super().save(*args, **kwargs)
