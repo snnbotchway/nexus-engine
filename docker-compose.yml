@@ -26,6 +26,8 @@ services:
       - EMAIL_PORT=25
       - DEFAULT_FROM_EMAIL=from@snnbotchway.com
       - CLIENT_DOMAIN=client_url.com
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - SOCIAL_AUTH_ALLOWED_REDIRECT_URIS=http://127.0.0.1:3000,http://127.0.0.1:3000/home,http://127.0.0.1:3000/login
     depends_on:
       - db
       - smtp4dev
@@ -44,7 +46,7 @@ services:
   smtp4dev:
     image: rnwood/smtp4dev
     ports:
-      - "3000:80"
+      - "3001:80"
       - "2525:25"
     volumes:
       - smtp4dev-data:/smtp4dev
