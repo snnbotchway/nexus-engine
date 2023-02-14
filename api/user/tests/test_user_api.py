@@ -10,6 +10,7 @@ from djoser.serializers import UserSerializer
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 
 User = get_user_model()
 REQUIRED_FIELD_ERROR = ["This field may not be blank."]
@@ -26,6 +27,7 @@ RESET_PASSWORD_CONFIRM_URL = reverse("user:user-reset-password-confirm")
 JWT_CREATE_URL = reverse("user:jwt-create")
 JWT_REFRESH_URL = reverse("user:jwt-refresh")
 JWT_VERIFY_URL = reverse("user:jwt-verify")
+JWT_BLACKLIST_URL = reverse("user:jwt-blacklist")
 
 
 @pytest.fixture
@@ -1047,3 +1049,56 @@ class TestJWTVerify:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.data.get("detail") == "Token is invalid or expired"
         assert response.data.get("code") == "token_not_valid"
+
+
+@pytest.mark.django_db
+class TestJWTBlacklist:
+    def test_blacklist_token_returns_200(self, api_client, create_jwt):
+        """Test blacklist refresh token successful for valid token."""
+        _, refresh, _ = create_jwt
+        payload = {"refresh": refresh}
+
+        response = api_client.post(JWT_BLACKLIST_URL, payload)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == {}
+        assert BlacklistedToken.objects.all().count() == 1
+
+        response = api_client.post(JWT_REFRESH_URL, payload)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data == {
+            "detail": "Token is blacklisted",
+            "code": "token_not_valid",
+        }
+
+    def test_blacklist_access_token_returns_401(self, api_client, create_jwt):
+        """Test blacklist access token unsuccessful."""
+        access, _, _ = create_jwt
+        payload = {"refresh": access}
+
+        response = api_client.post(JWT_BLACKLIST_URL, payload)
+
+        print(response.data)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data == {
+            "detail": "Token has wrong type",
+            "code": "token_not_valid",
+        }
+        assert BlacklistedToken.objects.all().count() == 0
+
+    def test_blacklist_blacklisted_token_returns_401(self, api_client, create_jwt):
+        """Test blacklist already blacklisted token returns error."""
+        _, refresh, _ = create_jwt
+        payload = {"refresh": refresh}
+        api_client.post(JWT_BLACKLIST_URL, payload)
+
+        response = api_client.post(JWT_BLACKLIST_URL, payload)
+
+        print(response.data)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data == {
+            "detail": "Token is blacklisted",
+            "code": "token_not_valid",
+        }
+        assert BlacklistedToken.objects.all().count() == 1
