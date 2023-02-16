@@ -26,7 +26,7 @@ def validate_age(value):
         today.year - value.year - ((today.month, today.day) < (value.month, value.day))
     )
     if age < 13:
-        raise ValidationError("You must be at least 13 years old to use this service.")
+        raise ValidationError("You must be at least 13 years old to use Nexus.")
 
 
 class Profile(models.Model):
