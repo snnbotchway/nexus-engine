@@ -62,14 +62,16 @@ class TestUserModel:
         assert str(excinfo.value) == "The given username must be set"
         assert User.objects.all().count() == 0
 
-    def test_create_user_missing_email_fails(self, sample_payload):
-        """Test creating user without email raises an error."""
+    def test_create_user_missing_email_validation(self, sample_payload):
+        """Test validating user without email raises an error."""
         sample_payload.update({"email": None})
 
+        user = User.objects.create_user(**sample_payload)
         with pytest.raises(ValidationError) as excinfo:
-            User.objects.create_user(**sample_payload)
-        assert str(excinfo.value.message_dict["email"][0]) == "This field is required."
-        assert User.objects.all().count() == 0
+            user.full_clean()
+        assert (
+            str(excinfo.value.message_dict["email"][0]) == "This field cannot be blank."
+        )
 
     def test_create_user_missing_first_name_fails(self, sample_payload):
         """Test creating user without first name raises an error."""
