@@ -8,6 +8,7 @@ https://docs.djangoproject.com/en/4.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
+
 import os
 from datetime import timedelta
 from typing import List
@@ -67,6 +68,29 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+if DEBUG:
+    # Configure django debug toolbar for development
+    import socket
+
+    INSTALLED_APPS += [
+        "debug_toolbar",
+    ]
+    MIDDLEWARE += [
+        "debug_toolbar.middleware.DebugToolbarMiddleware",
+    ]
+
+    INTERNAL_IPS = [
+        "127.0.0.1",
+        "0.0.0.0:8000",
+    ]
+
+    hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+    INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + [
+        "127.0.0.1",
+        "10.0.2.2",
+        "0.0.0.0:8000",
+    ]
 
 CORS_ALLOWED_ORIGINS: List[str] = list(
     filter(None, env("CORS_ALLOWED_ORIGINS").split(","))

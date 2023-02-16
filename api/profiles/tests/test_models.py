@@ -68,7 +68,7 @@ class TestProfileModel:
         assert Profile.objects.all().count() == 0
 
     def test_minimum_age_validation(self, sample_payload, sample_user):
-        """Test creating a profile with age less than 13 raises an error."""
+        """Test validating a profile with age less than 13 raises an error."""
         date_from_12_years_ago = timezone.now().date() - timezone.timedelta(
             days=365 * 12
         )
@@ -80,7 +80,7 @@ class TestProfileModel:
             profile.full_clean()
 
     def test_website_field_validation(self, sample_payload, sample_user):
-        """Test create profile with invalid url as website raises an error."""
+        """Test validating profile with invalid url as website raises an error."""
         sample_payload.update({"website": "invalidurl"})
 
         profile = Profile.objects.create(**sample_payload, user=sample_user)
