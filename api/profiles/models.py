@@ -3,10 +3,10 @@ import os
 import uuid
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.db import models
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+from .validators import validate_age, validate_image_size
 
 User = get_user_model()
 
@@ -19,16 +19,6 @@ def profile_image_file_path(instance, filename):
     return os.path.join("uploads/profile/", filename)
 
 
-def validate_age(value):
-    """Ensure user is at least 13 years of age."""
-    today = timezone.now().date()
-    age = (
-        today.year - value.year - ((today.month, today.day) < (value.month, value.day))
-    )
-    if age < 13:
-        raise ValidationError("You must be at least 13 years old to use Nexus.")
-
-
 class Profile(models.Model):
     """Profile model definition."""
 
@@ -39,7 +29,12 @@ class Profile(models.Model):
         _("birth date"), null=True, blank=True, validators=[validate_age]
     )
     website = models.URLField(_("website"), max_length=200, blank=True, null=True)
-    image = models.ImageField(null=True, blank=True, upload_to=profile_image_file_path)
+    image = models.ImageField(
+        null=True,
+        blank=True,
+        upload_to=profile_image_file_path,
+        validators=[validate_image_size],
+    )
     is_verified = models.BooleanField(_("verified"), default=False)
     is_suspended = models.BooleanField(default=False)
 
