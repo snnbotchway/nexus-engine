@@ -497,6 +497,19 @@ class TestCreateProfileMe:
         }
         assert Profile.objects.all().count() == 0
 
+    def test_user_create_profile_if_already_exists_returns_400(
+        self, api_client, profile_payload, sample_user
+    ):
+        """Test user create profile if one already exists returns an error."""
+        api_client.force_authenticate(user=sample_user)
+        baker.make(Profile, user=sample_user)
+
+        response = api_client.post(PROFILE_ME_URL, profile_payload())
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data == {"detail": ["You already have a profile."]}
+        assert Profile.objects.all().count() == 1
+
     def test_user_create_profile_with_invalid_website_returns_400(
         self, api_client, profile_payload, sample_user
     ):

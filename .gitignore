@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# db population files
+users321373.json
+profiles321373.json
+scripts321373.py
