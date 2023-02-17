@@ -17,7 +17,8 @@ import environ
 
 env = environ.Env(
     # set casting, default value
-    DEBUG=(bool, False)
+    DEBUG=(bool, False),
+    IS_DOCKER=(bool, False),
 )
 
 # Set the project base directory
@@ -69,6 +70,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+IS_DOCKER = env("IS_DOCKER")
+
 if DEBUG:
     # Configure django debug toolbar for development
     import socket
@@ -91,6 +94,13 @@ if DEBUG:
         "10.0.2.2",
         "0.0.0.0:8000",
     ]
+
+    # Support static files in development
+    if IS_DOCKER:
+        STATIC_ROOT = "/vol/web/static"
+        MEDIA_ROOT = "/vol/web/media"
+    else:
+        STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
 CORS_ALLOWED_ORIGINS: List[str] = list(
     filter(None, env("CORS_ALLOWED_ORIGINS").split(","))
@@ -165,7 +175,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/static/"
+MEDIA_URL = "/static/media/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field

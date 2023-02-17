@@ -1,9 +1,13 @@
 """Tests for the User API."""
+import os
+import tempfile
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 from model_bakery import baker
+from PIL import Image
 from profiles.models import Profile
 from profiles.serializers import ProfileSerializer
 from rest_framework import status
@@ -12,6 +16,7 @@ from rest_framework.test import APIClient
 User = get_user_model()
 PROFILE_URL = reverse("profiles:profile-list")
 PROFILE_ME_URL = reverse("profiles:profile-me")
+PROFILE_IMAGE_URL = reverse("profiles:profile-upload-image")
 
 
 @pytest.fixture
@@ -62,6 +67,22 @@ def profile_payload():
         return payload
 
     return _profile_payload
+
+
+@pytest.fixture
+def image_url():
+    """Return profile image upload URL."""
+
+    def _image_url(profile_id):
+        return reverse("profiles:profile-admin-upload-image", args=[profile_id])
+
+    return _image_url
+
+
+@pytest.fixture
+def sample_profile():
+    """Return sample profile."""
+    return baker.make(Profile)
 
 
 @pytest.mark.django_db
@@ -685,3 +706,152 @@ class TestDeleteProfileMe:
             "detail": "Authentication credentials were not provided."
         }
         assert Profile.objects.all().count() == 1
+
+
+@pytest.mark.django_db
+class TestAdminProfileImageUpload:
+    """Test admin profile image upload endpoint."""
+
+    def test_admin_upload_image_to_profile_returns_200(
+        self, api_client, admin_user, image_url, sample_profile
+    ):
+        """Test uploading an image to a profile."""
+        api_client.force_authenticate(user=admin_user)
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as ntf:
+            img = Image.new("RGB", (10, 10))
+            img.save(ntf, format="JPEG")
+            ntf.seek(0)
+
+            response = api_client.post(
+                image_url(sample_profile.id), {"image": ntf}, format="multipart"
+            )
+
+        profile = Profile.objects.get(pk=response.data.get("id"))
+        assert response.status_code == status.HTTP_200_OK
+        assert "image" in response.data
+        assert os.path.exists(profile.image.path)
+        assert Profile.objects.count() == 1
+        os.remove(profile.image.path)
+
+    def test_upload_invalid_image_returns_400(
+        self, api_client, admin_user, image_url, sample_profile
+    ):
+        """Test uploading an invalid image."""
+        api_client.force_authenticate(user=admin_user)
+
+        response = api_client.post(
+            image_url(sample_profile.id), {"image": "not_an_image"}, format="multipart"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "image" in response.data
+
+    def test_authenticated_but_not_admin_upload_image_returns_403(
+        self, api_client, image_url, sample_profile, sample_user
+    ):
+        """Test authenticated but not admin user cannot upload profile image."""
+        api_client.force_authenticate(user=sample_user)
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as ntf:
+            img = Image.new("RGB", (10, 10))
+            img.save(ntf, format="JPEG")
+            ntf.seek(0)
+
+            response = api_client.post(
+                image_url(sample_profile.id), {"image": ntf}, format="multipart"
+            )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.data == {
+            "detail": "You do not have permission to perform this action."
+        }
+
+    def test_anonymous_user_upload_profile_image_returns_401(
+        self, api_client, image_url, sample_profile
+    ):
+        """Test anonymous user cannot upload profile image."""
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as ntf:
+            img = Image.new("RGB", (10, 10))
+            img.save(ntf, format="JPEG")
+            ntf.seek(0)
+
+            response = api_client.post(
+                image_url(sample_profile.id), {"image": ntf}, format="multipart"
+            )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data == {
+            "detail": "Authentication credentials were not provided."
+        }
+
+
+@pytest.mark.django_db
+class TestProfileImageUpload:
+    """Test profile image upload endpoint."""
+
+    def test_upload_image_to_profile_returns_200(self, api_client, sample_user):
+        """Test uploading an image to profile."""
+        api_client.force_authenticate(user=sample_user)
+        baker.make(Profile, user=sample_user)
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as ntf:
+            img = Image.new("RGB", (10, 10))
+            img.save(ntf, format="JPEG")
+            ntf.seek(0)
+
+            response = api_client.post(
+                PROFILE_IMAGE_URL, {"image": ntf}, format="multipart"
+            )
+
+        profile = Profile.objects.get(pk=response.data.get("id"))
+        assert response.status_code == status.HTTP_200_OK
+        assert "image" in response.data
+        assert os.path.exists(profile.image.path)
+        assert Profile.objects.count() == 1
+        os.remove(profile.image.path)
+
+    def test_profile_created_if_not_exists_on_image_upload(
+        self, api_client, sample_user
+    ):
+        """Test profile is created if not exists on image upload."""
+        api_client.force_authenticate(user=sample_user)
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as ntf:
+            img = Image.new("RGB", (10, 10))
+            img.save(ntf, format="JPEG")
+            ntf.seek(0)
+
+            response = api_client.post(
+                PROFILE_IMAGE_URL, {"image": ntf}, format="multipart"
+            )
+
+        profile = Profile.objects.get(pk=response.data.get("id"))
+        assert response.status_code == status.HTTP_200_OK
+        assert "image" in response.data
+        assert os.path.exists(profile.image.path)
+        assert Profile.objects.count() == 1
+        os.remove(profile.image.path)
+
+    def test_upload_invalid_image_returns_400(self, api_client, sample_user):
+        """Test uploading an invalid image."""
+        api_client.force_authenticate(user=sample_user)
+
+        response = api_client.post(
+            PROFILE_IMAGE_URL, {"image": "not_an_image"}, format="multipart"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "image" in response.data
+
+    def test_anonymous_user_upload_profile_image_returns_401(self, api_client):
+        """Test anonymous user cannot upload profile image."""
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as ntf:
+            img = Image.new("RGB", (10, 10))
+            img.save(ntf, format="JPEG")
+            ntf.seek(0)
+
+            response = api_client.post(
+                PROFILE_IMAGE_URL, {"image": ntf}, format="multipart"
+            )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data == {
+            "detail": "Authentication credentials were not provided."
+        }

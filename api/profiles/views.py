@@ -7,7 +7,11 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from .models import Profile
-from .serializers import ProfileSerializer, UserReadOnlyProfileSerializer
+from .serializers import (
+    ProfileImageSerializer,
+    ProfileSerializer,
+    UserReadOnlyProfileSerializer,
+)
 
 
 class ProfileViewSet(ModelViewSet):
@@ -22,14 +26,28 @@ class ProfileViewSet(ModelViewSet):
         "post",
     ]
 
+    serializer_class = ProfileSerializer
     queryset = Profile.objects.select_related("user").all()
     permission_classes = [IsAdminUser]
 
     def get_serializer_class(self):
         """Return appropriate serializer considering the request method."""
-        if self.request.method == "PATCH":
-            return UserReadOnlyProfileSerializer
-        return ProfileSerializer
+        serializer_classes = {
+            "PATCH": UserReadOnlyProfileSerializer,
+            "me": UserReadOnlyProfileSerializer,
+            "upload_image": ProfileImageSerializer,
+            "admin_upload_image": ProfileImageSerializer,
+        }
+        method = self.request.method
+        action = self.action
+        serializer_class = self.serializer_class
+
+        if method in serializer_classes:
+            serializer_class = serializer_classes[method]
+        elif action in serializer_classes:
+            serializer_class = serializer_classes[action]
+
+        return serializer_class
 
     @action(
         detail=False,
@@ -39,21 +57,49 @@ class ProfileViewSet(ModelViewSet):
     def me(self, request):
         """Me action to manage current user's profile."""
         if request.method == "POST":
-            serializer = UserReadOnlyProfileSerializer(data=request.data)
+            serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            serializer.save(user_id=request.user.id)
+            serializer.save(user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         elif request.method == "GET":
-            profile, _ = Profile.objects.get_or_create(user_id=request.user.id)
-            serializer = ProfileSerializer(profile, many=False)
+            profile, _ = Profile.objects.get_or_create(user=request.user)
+            serializer = self.get_serializer(profile, many=False)
             return Response(serializer.data, status=status.HTTP_200_OK)
         elif request.method == "PATCH":
-            profile, _ = Profile.objects.get_or_create(user_id=request.user.id)
-            serializer = UserReadOnlyProfileSerializer(profile, data=request.data)
+            profile, _ = Profile.objects.get_or_create(user=request.user)
+            serializer = self.get_serializer(profile, data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         elif request.method == "DELETE":
-            profile = get_object_or_404(Profile, user_id=request.user.id)
+            profile = get_object_or_404(Profile, user=request.user)
             profile.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        methods=["POST"],
+        detail=False,
+        url_path="upload-image",
+        permission_classes=[IsAuthenticated],
+    )
+    def upload_image(self, request, pk=None):
+        """Upload an image to current user's profile."""
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        serializer = self.get_serializer(profile, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        methods=["POST"],
+        detail=True,
+        url_path="upload-image",
+        permission_classes=[IsAdminUser],
+    )
+    def admin_upload_image(self, request, pk=None):
+        """Upload an image to any profile."""
+        profile, _ = Profile.objects.get_or_create(pk=pk)
+        serializer = self.get_serializer(profile, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
