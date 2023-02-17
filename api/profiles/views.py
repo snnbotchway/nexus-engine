@@ -27,7 +27,7 @@ class ProfileViewSet(ModelViewSet):
     ]
 
     serializer_class = ProfileSerializer
-    queryset = Profile.objects.select_related("user").all()
+    queryset = Profile.objects.all()
     permission_classes = [IsAdminUser]
 
     def get_serializer_class(self):
