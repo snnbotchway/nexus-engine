@@ -1,9 +1,10 @@
-"""Tests for the User API."""
+"""Tests for the Profile API."""
 import os
 import tempfile
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 from model_bakery import baker
@@ -821,6 +822,27 @@ class TestProfileImageUpload:
         assert Profile.objects.count() == 1
         os.remove(profile.image.path)
 
+    def test_upload_large_image_to_profile_returns_400(self, api_client, sample_user):
+        """Test uploading large image fails."""
+        api_client.force_authenticate(user=sample_user)
+        profile = baker.make(Profile, user=sample_user)
+        with tempfile.NamedTemporaryFile(suffix=".jpg") as ntf:
+            img = Image.new("RGB", (10, 10))
+            img.save(ntf, format="JPEG")
+            ntf.seek(0)
+
+            # Create a file that is more than 1 MB
+            large_file = SimpleUploadedFile("large_file.jpg", ntf.read() * 2000)
+
+            # Attempt to upload the file and check that an error is returned
+            response = api_client.post(
+                PROFILE_IMAGE_URL, {"image": large_file}, format="multipart"
+            )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data == {"image": ["The image cannot be larger than 1MB."]}
+        assert not profile.image
+
     def test_profile_created_if_not_exists_on_image_upload(
         self, api_client, sample_user
     ):
@@ -851,7 +873,11 @@ class TestProfileImageUpload:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "image" in response.data
+        assert response.data == {
+            "image": [
+                "The submitted data was not a file. Check the encoding type on the form."  # noqa
+            ]
+        }
 
     def test_anonymous_user_upload_profile_image_returns_401(self, api_client):
         """Test anonymous user cannot upload profile image."""
