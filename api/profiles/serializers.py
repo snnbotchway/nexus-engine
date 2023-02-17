@@ -29,3 +29,14 @@ class UserReadOnlyProfileSerializer(ProfileSerializer):
     """A profile serializer but with a read only user_id field."""
 
     user_id = serializers.IntegerField(read_only=True)
+
+
+class ProfileImageSerializer(serializers.ModelSerializer):
+    """Serializer for uploading images to profiles."""
+
+    class Meta:
+        """Image serializer meta class."""
+
+        model = Profile
+        fields = ["id", "image"]
+        read_only_fields = ["id"]
