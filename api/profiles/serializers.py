@@ -22,11 +22,13 @@ class ProfileSerializer(serializers.ModelSerializer):
             "website",
             "is_verified",
             "is_suspended",
+            "image",
         ]
         read_only_fields = [
             "id",
             "is_verified",
             "is_suspended",
+            "image",
         ]
 
 
