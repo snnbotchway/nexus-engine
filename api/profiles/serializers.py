@@ -23,12 +23,25 @@ class ProfileSerializer(serializers.ModelSerializer):
             "is_verified",
             "is_suspended",
         ]
+        read_only_fields = [
+            "id",
+            "is_verified",
+            "is_suspended",
+        ]
 
 
 class UserReadOnlyProfileSerializer(ProfileSerializer):
     """A profile serializer but with a read only user_id field."""
 
     user_id = serializers.IntegerField(read_only=True)
+
+    def validate(self, attrs):
+        """Raise error on create profile if one already exists."""
+        request = self.context.get("request")
+        profile_exists = Profile.objects.filter(user_id=request.user.id).exists()
+        if profile_exists and request.method == "POST":
+            raise serializers.ValidationError({"detail": "You already have a profile."})
+        return attrs
 
 
 class ProfileImageSerializer(serializers.ModelSerializer):
