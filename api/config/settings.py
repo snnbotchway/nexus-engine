@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "core.apps.CoreConfig",
     "profiles.apps.ProfilesConfig",
     "user.apps.UserConfig",
+    "post.apps.PostConfig",
     # Third party apps
     "rest_framework",
     "djoser",
