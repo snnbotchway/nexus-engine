@@ -46,3 +46,32 @@ class Profile(models.Model):
     def __str__(self):
         """Return profile user's full name."""
         return self.full_name
+
+
+class Follow(models.Model):
+    """Follow model definition."""
+
+    follower = models.ForeignKey(
+        Profile, on_delete=models.CASCADE, related_name="following"
+    )
+    following = models.ForeignKey(
+        Profile, on_delete=models.CASCADE, related_name="followers"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        """Follow model meta class."""
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["follower", "following"], name="unique_follow"
+            ),
+            models.CheckConstraint(
+                check=~models.Q(follower=models.F("following")),
+                name="no_self_follow",
+            ),
+        ]
+
+    def __str__(self):
+        """Return follow description."""
+        return f"{self.follower} follows {self.following}"
