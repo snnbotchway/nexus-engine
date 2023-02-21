@@ -7,7 +7,7 @@ from django.db import transaction
 from django.db.utils import IntegrityError
 from django.utils import timezone
 from model_bakery import baker
-from profiles.models import Profile, profile_image_file_path
+from profiles.models import Follow, Profile, profile_image_file_path
 
 User = get_user_model()
 
@@ -103,3 +103,46 @@ class TestProfileModel:
 
         exp_path = f"uploads/profile/{uuid}.jpg"
         assert file_path == exp_path
+
+
+@pytest.mark.django_db
+class TestFollowModel:
+    def test_follow_successful(self):
+        """Test create follow each other successful."""
+        profile1 = baker.make(Profile)
+        profile2 = baker.make(Profile)
+
+        follow = Follow.objects.create(follower=profile1, following=profile2)
+
+        assert follow.follower == profile1
+        assert follow.following == profile2
+        assert str(follow) == f"{profile1.full_name} follows {profile2.full_name}"
+        assert Follow.objects.count() == 1
+
+        follow = Follow.objects.create(follower=profile2, following=profile1)
+
+        assert follow.follower == profile2
+        assert follow.following == profile1
+        assert str(follow) == f"{profile2.full_name} follows {profile1.full_name}"
+        assert Follow.objects.count() == 2
+
+    def test_follow_oneself_fails(self):
+        """Test create follow object with same follower and following fails."""
+        profile = baker.make(Profile)
+
+        with transaction.atomic():
+            with pytest.raises(IntegrityError):
+                Follow.objects.create(follower=profile, following=profile)
+        assert Follow.objects.count() == 0
+
+    def test_follow_more_than_once_fails(self):
+        """Test one profile following another more than once fails."""
+        follower = baker.make(Profile)
+        following = baker.make(Profile)
+
+        Follow.objects.create(follower=follower, following=following)
+
+        with transaction.atomic():
+            with pytest.raises(IntegrityError):
+                Follow.objects.create(follower=follower, following=following)
+        assert Follow.objects.count() == 1
