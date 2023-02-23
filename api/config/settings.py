@@ -102,6 +102,8 @@ if DEBUG:
         MEDIA_ROOT = "/vol/web/media"
     else:
         STATIC_ROOT = os.path.join(BASE_DIR, "static")
+        MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
 
 CORS_ALLOWED_ORIGINS: List[str] = list(
     filter(None, env("CORS_ALLOWED_ORIGINS").split(","))
