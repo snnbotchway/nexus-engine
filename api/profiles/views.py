@@ -120,9 +120,13 @@ class FollowViewSet(CreateModelMixin, DestroyModelMixin, GenericViewSet):
             self._current_profile = Profile.objects.get(user=self.request.user)
         return self._current_profile
 
-    def get_queryset(self):
-        """Filter queryset to only follows that the current profile is the follower."""
-        return self.queryset.filter(follower=self.get_current_profile())
+    def get_object(self):
+        """Return the follow object for the current user and requested profile."""
+        following_id = self.kwargs.get("pk")
+        follow = get_object_or_404(
+            Follow, follower=self.get_current_profile(), following_id=following_id
+        )
+        return follow
 
     def get_serializer_context(self):
         """Pass the current user's profile to the serializer."""
