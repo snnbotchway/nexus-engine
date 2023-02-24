@@ -110,6 +110,19 @@ class TestCreateFollow:
         assert response.data == {"following_id": ["You cannot follow yourself."]}
         assert Follow.objects.count() == 0
 
+    def test_follow_non_existing_profile_returns_404(
+        self, api_client, sample_user, sample_profile, follow_payload
+    ):
+        """Test follow non existing profile returns error."""
+        api_client.force_authenticate(user=sample_user)
+        follow_payload.update({"following_id": sample_profile.id + 2})
+
+        response = api_client.post(FOLLOW_URL, follow_payload)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data == {"detail": "Not found."}
+        assert Follow.objects.count() == 0
+
     def test_anonymous_user_follow_returns_401(self, api_client, follow_payload):
         """Test anonymous users cannot follow others."""
 
