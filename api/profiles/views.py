@@ -2,12 +2,14 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.mixins import CreateModelMixin, DestroyModelMixin
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from .models import Profile
+from .models import Follow, Profile
 from .serializers import (
+    CreateFollowSerializer,
     ProfileImageSerializer,
     ProfileSerializer,
     UserReadOnlyProfileSerializer,
@@ -103,3 +105,29 @@ class ProfileViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class FollowViewSet(CreateModelMixin, DestroyModelMixin, GenericViewSet):
+    """Viewset for creating and deleting follow objects(follow and unfollow)."""
+
+    queryset = Follow.objects.all()
+    serializer_class = CreateFollowSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_current_profile(self):
+        """Return the current user's profile."""
+        if not hasattr(self, "_current_profile"):
+            self._current_profile = Profile.objects.get(user=self.request.user)
+        return self._current_profile
+
+    def get_queryset(self):
+        """Filter queryset to only follows that the current profile is the follower."""
+        return self.queryset.filter(follower=self.get_current_profile())
+
+    def get_serializer_context(self):
+        """Pass the current user's profile to the serializer."""
+        return {"current_profile": self.get_current_profile()}
+
+    def perform_create(self, serializer):
+        """Set follower to current user's profile before saving."""
+        serializer.save(follower=self.get_current_profile())

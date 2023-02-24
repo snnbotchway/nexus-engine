@@ -1,7 +1,7 @@
 """Serializers for the Profiles app."""
 from rest_framework import serializers
 
-from .models import Profile
+from .models import Follow, Profile
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -55,3 +55,31 @@ class ProfileImageSerializer(serializers.ModelSerializer):
         model = Profile
         fields = ["id", "image"]
         read_only_fields = ["id"]
+
+
+class CreateFollowSerializer(serializers.ModelSerializer):
+    """Serializer for creating follows."""
+
+    following_id = serializers.IntegerField()
+
+    class Meta:
+        """Follow serializer meta class."""
+
+        model = Follow
+        fields = [
+            "id",
+            "following_id",
+            "follower_id",
+        ]
+
+    def validate_following_id(self, value):
+        """Ensure `value` is a valid following ID for the current user's profile."""
+        current_profile = self.context.get("current_profile")
+        follow_exists = Follow.objects.filter(
+            follower=current_profile, following_id=value
+        ).exists()
+        if follow_exists:
+            raise serializers.ValidationError("You are already following this profile.")
+        if current_profile.id == value:
+            raise serializers.ValidationError("You cannot follow yourself.")
+        return value
