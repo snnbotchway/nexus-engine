@@ -1,4 +1,5 @@
 """Serializers for the Profiles app."""
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from .models import Follow, Profile
@@ -74,6 +75,7 @@ class CreateFollowSerializer(serializers.ModelSerializer):
 
     def validate_following_id(self, value):
         """Ensure `value` is a valid following ID for the current user's profile."""
+        get_object_or_404(Profile, id=value)
         current_profile = self.context.get("current_profile")
         follow_exists = Follow.objects.filter(
             follower=current_profile, following_id=value
