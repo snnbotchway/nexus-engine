@@ -32,8 +32,8 @@ def not_allowed_response():
 def follow_detail_url():
     """Return the follow detail URL."""
 
-    def _follow_detail_url(follow_id):
-        return reverse("profiles:follow-detail", args=[follow_id])
+    def _follow_detail_url(following_id):
+        return reverse("profiles:follow-detail", args=[following_id])
 
     return _follow_detail_url
 
@@ -210,11 +210,11 @@ class TestDeleteFollow:
     """Test deleting a follow object."""
 
     def test_unfollow_profile_returns_204(
-        self, api_client, sample_profile, sample_user, follow_detail_url
+        self, api_client, other_profile, sample_profile, sample_user, follow_detail_url
     ):
         """Test unfollow profile successful."""
-        follow = baker.make(Follow, follower=sample_profile)
-        url = follow_detail_url(follow.id)
+        baker.make(Follow, follower=sample_profile, following=other_profile)
+        url = follow_detail_url(other_profile.id)
         api_client.force_authenticate(user=sample_user)
 
         response = api_client.delete(url)
@@ -223,12 +223,12 @@ class TestDeleteFollow:
         assert not response.data
         assert Follow.objects.count() == 0
 
-    def test_delete_other_profiles_follow_returns_404(
+    def test_unfollow_profile_you_not_following_returns_404(
         self, api_client, sample_user, follow_detail_url, other_profile, sample_profile
     ):
-        """Test delete other profile's follow returns error."""
-        follow = baker.make(Follow, follower=other_profile)
-        url = follow_detail_url(follow.id)
+        """Test unfollow a profile you're not following returns error."""
+        baker.make(Follow, follower=sample_profile, following=other_profile)
+        url = follow_detail_url(other_profile.id + 1)
         api_client.force_authenticate(user=sample_user)
 
         response = api_client.delete(url)
@@ -238,11 +238,11 @@ class TestDeleteFollow:
         assert Follow.objects.count() == 1
 
     def test_anonymous_user_unfollow_returns_401(
-        self, api_client, follow_detail_url, sample_profile
+        self, api_client, follow_detail_url, other_profile, sample_profile
     ):
         """Test anonymous user cannot unfollow."""
-        follow = baker.make(Follow, follower=sample_profile)
-        url = follow_detail_url(follow.id)
+        baker.make(Follow, follower=sample_profile, following=other_profile)
+        url = follow_detail_url(other_profile.id)
 
         response = api_client.delete(url)
 
