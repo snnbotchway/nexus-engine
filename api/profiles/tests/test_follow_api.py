@@ -3,63 +3,12 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from model_bakery import baker
-from profiles.models import Follow, Profile
+from profiles.models import Follow
 from profiles.serializers import CreateFollowSerializer
 from rest_framework import status
-from rest_framework.test import APIClient
 
 User = get_user_model()
 FOLLOW_URL = reverse("profiles:follow-list")
-
-
-@pytest.fixture
-def api_client():
-    """Return an API client object."""
-    return APIClient()
-
-
-@pytest.fixture
-def not_allowed_response():
-    """Return the method not allowed error response."""
-
-    def _not_allowed_response(method):
-        return {"detail": f'Method "{method}" not allowed.'}
-
-    return _not_allowed_response
-
-
-@pytest.fixture
-def follow_detail_url():
-    """Return the follow detail URL."""
-
-    def _follow_detail_url(following_id):
-        return reverse("profiles:follow-detail", args=[following_id])
-
-    return _follow_detail_url
-
-
-@pytest.fixture
-def sample_user():
-    """Return a sample user."""
-    return baker.make(User)
-
-
-@pytest.fixture
-def sample_profile(sample_user):
-    """Return a sample profile."""
-    return baker.make(Profile, user=sample_user)
-
-
-@pytest.fixture
-def other_profile():
-    """Return a sample profile."""
-    return baker.make(Profile)
-
-
-@pytest.fixture
-def follow_payload(other_profile):
-    """Return a sample follow payload."""
-    return {"following_id": other_profile.id}
 
 
 @pytest.mark.django_db
@@ -111,7 +60,12 @@ class TestCreateFollow:
         assert Follow.objects.count() == 0
 
     def test_follow_non_existing_profile_returns_404(
-        self, api_client, sample_user, sample_profile, follow_payload
+        self,
+        api_client,
+        not_found_response,
+        sample_user,
+        sample_profile,
+        follow_payload,
     ):
         """Test follow non existing profile returns error."""
         api_client.force_authenticate(user=sample_user)
@@ -120,7 +74,7 @@ class TestCreateFollow:
         response = api_client.post(FOLLOW_URL, follow_payload)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.data == {"detail": "Not found."}
+        assert response.data == not_found_response
         assert Follow.objects.count() == 0
 
     def test_anonymous_user_follow_returns_401(self, api_client, follow_payload):
@@ -224,7 +178,13 @@ class TestDeleteFollow:
         assert Follow.objects.count() == 0
 
     def test_unfollow_profile_you_not_following_returns_404(
-        self, api_client, sample_user, follow_detail_url, other_profile, sample_profile
+        self,
+        api_client,
+        follow_detail_url,
+        not_found_response,
+        other_profile,
+        sample_user,
+        sample_profile,
     ):
         """Test unfollow a profile you're not following returns error."""
         baker.make(Follow, follower=sample_profile, following=other_profile)
@@ -234,7 +194,7 @@ class TestDeleteFollow:
         response = api_client.delete(url)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.data == {"detail": "Not found."}
+        assert response.data == not_found_response
         assert Follow.objects.count() == 1
 
     def test_anonymous_user_unfollow_returns_401(
