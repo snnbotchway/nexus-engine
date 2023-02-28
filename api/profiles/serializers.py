@@ -1,14 +1,53 @@
 """Serializers for the Profiles app."""
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from .models import Follow, Profile
 
+User = get_user_model()
+
+
+class SimpleUserSerializer(serializers.ModelSerializer):
+    """Simple serializer for the user model."""
+
+    class Meta:
+        """Simple user serializer meta class."""
+
+        model = User
+        fields = [
+            "username",
+            "first_name",
+            "last_name",
+        ]
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Simple serializer for the profile model."""
+
+    user = SimpleUserSerializer()
+    is_following = serializers.BooleanField(required=False)
+    follows_you = serializers.BooleanField(required=False)
+
+    class Meta:
+        """User Profile serializer Meta class."""
+
+        model = Profile
+        fields = [
+            "id",
+            "user",
+            "bio",
+            "is_verified",
+            "image",
+            "is_following",
+            "follows_you",
+        ]
+
 
 class ProfileSerializer(serializers.ModelSerializer):
     """Serializer for the profile model."""
 
-    user_id = serializers.IntegerField()
+    user_id = serializers.IntegerField(read_only=True)
 
     class Meta:
         """Serializer Meta class."""
@@ -32,18 +71,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             "image",
         ]
 
-
-class UserReadOnlyProfileSerializer(ProfileSerializer):
-    """A profile serializer but with a read only user_id field."""
-
-    user_id = serializers.IntegerField(read_only=True)
-
     def validate(self, attrs):
         """Raise error on create profile if one already exists."""
         request = self.context.get("request")
-        profile_exists = Profile.objects.filter(user_id=request.user.id).exists()
-        if profile_exists and request.method == "POST":
-            raise serializers.ValidationError({"detail": "You already have a profile."})
+        if request.method == "POST":
+            profile_exists = Profile.objects.filter(user_id=request.user.id).exists()
+            if profile_exists:
+                raise serializers.ValidationError(
+                    {"detail": "You already have a profile."}
+                )
         return attrs
 
 

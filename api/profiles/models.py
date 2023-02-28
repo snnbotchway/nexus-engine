@@ -37,6 +37,12 @@ class Profile(models.Model):
     )
     is_verified = models.BooleanField(_("verified"), default=False)
     is_suspended = models.BooleanField(default=False)
+    follows = models.ManyToManyField(
+        "self",
+        through="Follow",
+        symmetrical=False,
+        related_name="followed_by",
+    )
 
     @property
     def full_name(self):
