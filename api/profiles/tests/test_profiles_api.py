@@ -10,7 +10,11 @@ from django.utils import timezone
 from model_bakery import baker
 from PIL import Image
 from profiles.models import Follow, Profile
-from profiles.serializers import ProfileSerializer, UserProfileSerializer
+from profiles.serializers import (
+    ProfileSerializer,
+    SimpleUserProfileSerializer,
+    UserProfileSerializer,
+)
 from rest_framework import status
 
 User = get_user_model()
@@ -116,18 +120,25 @@ class TestRetrieveProfile:
         self,
         api_client,
         detail_url,
+        pop_extra_keys,
     ):
         """Test anyone can retrieve any profile."""
         profile = baker.make(Profile)
 
         response = api_client.get(detail_url(profile.id))
 
-        serializer = UserProfileSerializer(profile)
-        assert response.data == serializer.data
-        assert "is_following" not in response.data
-        assert "follows_you" not in response.data
         assert response.status_code == status.HTTP_200_OK
         assert Profile.objects.all().count() == 1
+        assert "is_following" not in response.data
+        assert "follows_you" not in response.data
+        assert response.data.get("following_count") == 0
+        assert response.data.get("followers_count") == 0
+        assert len(response.data.get("user")) == 4
+
+        # pop following and followers count fields for serializer.data comparison:
+        response.data = pop_extra_keys(response.data)
+        serializer = UserProfileSerializer(profile)
+        assert response.data == serializer.data
 
     def test_is_following_field(
         self, api_client, detail_url, pop_extra_keys, sample_profile, sample_user
@@ -142,10 +153,12 @@ class TestRetrieveProfile:
         assert response.status_code == status.HTTP_200_OK
         assert response.data.get("is_following")
         assert not response.data.get("follows_you")
+        assert response.data.get("following_count") == 0
+        assert response.data.get("followers_count") == 1
         assert Profile.objects.all().count() == 2
         assert Follow.objects.count() == 1
 
-        # pop is_following and follows_you for serializer.data comparison:
+        # pop the extra keys for serializer.data comparison:
         response.data = pop_extra_keys(response.data)
         serializer = UserProfileSerializer(profile)
         assert response.data == serializer.data
@@ -163,10 +176,12 @@ class TestRetrieveProfile:
         assert response.status_code == status.HTTP_200_OK
         assert not response.data.get("is_following")
         assert response.data.get("follows_you")
+        assert response.data.get("following_count") == 1
+        assert response.data.get("followers_count") == 0
         assert Profile.objects.all().count() == 2
         assert Follow.objects.count() == 1
 
-        # pop is_following and follows_you for serializer.data comparison:
+        # pop the extra keys for serializer.data comparison:
         serializer = UserProfileSerializer(profile)
         response.data = pop_extra_keys(response.data)
         assert response.data == serializer.data
@@ -185,10 +200,12 @@ class TestRetrieveProfile:
         assert response.status_code == status.HTTP_200_OK
         assert response.data.get("is_following")
         assert response.data.get("follows_you")
+        assert response.data.get("following_count") == 1
+        assert response.data.get("followers_count") == 1
         assert Profile.objects.all().count() == 2
         assert Follow.objects.count() == 2
 
-        # pop is_following and follows_you for serializer.data comparison:
+        # pop the extra keys for serializer.data comparison:
         serializer = UserProfileSerializer(profile)
         response.data = pop_extra_keys(response.data)
         assert response.data == serializer.data
@@ -206,8 +223,11 @@ class TestRetrieveProfileMe:
 
         response = api_client.get(PROFILE_ME_URL)
 
-        serializer = ProfileSerializer(sample_profile)
+        serializer = UserProfileSerializer(sample_profile)
         assert response.data == serializer.data
+        assert not response.data.get("is_following")
+        assert not response.data.get("follows_you")
+        assert len(response.data.get("user")) == 4
         assert response.status_code == status.HTTP_200_OK
         assert Profile.objects.all().count() == 1
 
@@ -224,7 +244,7 @@ class TestRetrieveProfileMe:
         response = api_client.get(PROFILE_ME_URL)
 
         profile = Profile.objects.get(pk=response.data.get("id"))
-        serializer = ProfileSerializer(profile)
+        serializer = UserProfileSerializer(profile)
         assert response.data == serializer.data
         assert response.status_code == status.HTTP_200_OK
         assert profile.user == sample_user
@@ -386,6 +406,178 @@ class TestDeleteProfileMe:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.data == unauthorized_response
         assert Profile.objects.all().count() == 1
+
+
+@pytest.mark.django_db
+class TestRetrieveFollowLists:
+    """Test list a profile's followers/following."""
+
+    def test_list_a_profiles_followers_returns_200(
+        self,
+        api_client,
+        followers_list_url,
+        other_profile,
+        pop_extra_keys,
+        sample_profile,
+        sample_user,
+    ):
+        """Test retrieve list of profiles; following a profile."""
+        baker.make(Profile)
+        profile = baker.make(Profile)
+        other_profile.followed_by.add(profile)
+        other_profile.followed_by.add(sample_profile)
+        url = followers_list_url(other_profile.id)
+        api_client.force_authenticate(user=sample_user)
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == Follow.objects.count() == 2
+        assert Profile.objects.count() == 4
+        for follower in response.data:
+            assert len(follower.get("user")) == 3
+            assert follower.get("id") in [profile.id, sample_profile.id]
+            assert not follower.get("follows_you")
+            assert not follower.get("is_following")
+
+            # pop is_following and follows_you for serializer.data comparison:
+            follower = pop_extra_keys(follower)
+
+        followers = other_profile.followed_by.all().order_by("id")
+        serializer = SimpleUserProfileSerializer(followers, many=True)
+        assert response.data == serializer.data
+
+    def test_anonymous_user_list_a_profiles_followers_returns_401(
+        self,
+        api_client,
+        followers_list_url,
+        sample_profile,
+        unauthorized_response,
+    ):
+        """Test anonymous user list profile followers returns error."""
+        url = followers_list_url(sample_profile.id)
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data == unauthorized_response
+        assert Profile.objects.count() == 1
+
+    def test_list_a_profiles_following_returns_200(
+        self,
+        api_client,
+        following_list_url,
+        other_profile,
+        pop_extra_keys,
+        sample_profile,
+        sample_user,
+    ):
+        """Test retrieve list of profiles; a profile is following."""
+        baker.make(Profile)
+        profile = baker.make(Profile)
+        other_profile.follows.add(profile)
+        other_profile.follows.add(sample_profile)
+        url = following_list_url(other_profile.id)
+        api_client.force_authenticate(user=sample_user)
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == Follow.objects.count() == 2
+        assert Profile.objects.count() == 4
+
+        for follower in response.data:
+            assert follower.get("id") in [profile.id, sample_profile.id]
+            assert not follower.get("follows_you")
+            assert not follower.get("is_following")
+
+            # pop is_following and follows_you for serializer.data comparison:
+            follower = pop_extra_keys(follower)
+
+        following = other_profile.follows.all().order_by("id")
+        serializer = SimpleUserProfileSerializer(following, many=True)
+        assert response.data == serializer.data
+
+    def test_anonymous_user_list_a_profiles_following_returns_401(
+        self,
+        api_client,
+        following_list_url,
+        sample_profile,
+        unauthorized_response,
+    ):
+        """Test anonymous user list profile following returns error."""
+        url = following_list_url(sample_profile.id)
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data == unauthorized_response
+        assert Profile.objects.count() == 1
+
+    def test_retrieve_profile_list_of_followers_i_know_returns_200(
+        self,
+        api_client,
+        sample_profile,
+        followers_i_know_list_url,
+        other_profile,
+        pop_extra_keys,
+        sample_user,
+    ):
+        """
+        Test retrieve list of profiles the current profile follows,
+        among a profile's followers.
+        """
+        # Create 3 profiles:
+        profile1 = baker.make(Profile)
+        profile2 = baker.make(Profile)
+        profile3 = baker.make(Profile)
+        # They all follow other_profile:
+        other_profile.followed_by.add(profile1)
+        other_profile.followed_by.add(profile2)
+        other_profile.followed_by.add(profile3)
+        # Sample_profile follows profile1 and profile2 but not profile3:
+        sample_profile.follows.add(profile1)
+        sample_profile.follows.add(profile2)
+
+        url = followers_i_know_list_url(other_profile.id)
+        api_client.force_authenticate(user=sample_user)
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert Follow.objects.count() == 5
+        assert len(response.data) == 2
+        profiles_i_follow = sample_profile.follows.all()
+        followers_i_know = other_profile.followed_by.filter(
+            id__in=profiles_i_follow
+        ).order_by("id")
+        for follower in response.data:
+            assert follower.get("id") in [profile1.id, profile2.id]
+            assert follower.get("id") != profile3.id
+            assert not follower.get("follows_you")
+            assert follower.get("is_following")
+
+            # pop is_following and follows_you for serializer.data comparison:
+            follower = pop_extra_keys(follower)
+
+        serializer = SimpleUserProfileSerializer(followers_i_know, many=True)
+        assert response.data == serializer.data
+
+    def test_anonymous_user_list_profiles_i_know_returns_401(
+        self,
+        api_client,
+        followers_i_know_list_url,
+        sample_profile,
+        unauthorized_response,
+    ):
+        """Test anonymous user list profile following returns error."""
+        url = followers_i_know_list_url(sample_profile.id)
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data == unauthorized_response
+        assert Profile.objects.count() == 1
 
 
 @pytest.mark.django_db

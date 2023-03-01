@@ -75,8 +75,45 @@ def pop_extra_keys():
     """Pop is_following and follows_you from a dictionary."""
 
     def _pop_extra_keys(dictionary):
-        for key in ["is_following", "follows_you"]:
-            dictionary.pop(key)
+        keys = [
+            "is_following",
+            "follows_you",
+            "followers_count",
+            "following_count",
+        ]
+        for key in keys:
+            if key in dictionary:
+                dictionary.pop(key)
         return dictionary
 
     return _pop_extra_keys
+
+
+@pytest.fixture
+def followers_list_url():
+    """Return the followers list URL."""
+
+    def _followers_list_url(profile_id):
+        return reverse("profiles:profile-followers", args=[profile_id])
+
+    return _followers_list_url
+
+
+@pytest.fixture
+def following_list_url():
+    """Return the following list URL."""
+
+    def _following_list_url(profile_id):
+        return reverse("profiles:profile-following", args=[profile_id])
+
+    return _following_list_url
+
+
+@pytest.fixture
+def followers_i_know_list_url():
+    """Return followers i know list URL."""
+
+    def _followers_i_know_list_url(profile_id):
+        return reverse("profiles:profile-followers-i-know", args=[profile_id])
+
+    return _followers_i_know_list_url
