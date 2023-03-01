@@ -432,9 +432,10 @@ class TestRetrieveFollowLists:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == Follow.objects.count() == 2
+        assert response.data.get("count") == Follow.objects.count() == 2
         assert Profile.objects.count() == 4
-        for follower in response.data:
+        results = response.data.get("results")
+        for follower in results:
             assert len(follower.get("user")) == 3
             assert follower.get("id") in [profile.id, sample_profile.id]
             assert not follower.get("follows_you")
@@ -445,7 +446,7 @@ class TestRetrieveFollowLists:
 
         followers = other_profile.followed_by.all().order_by("id")
         serializer = SimpleUserProfileSerializer(followers, many=True)
-        assert response.data == serializer.data
+        assert results == serializer.data
 
     def test_anonymous_user_list_a_profiles_followers_returns_401(
         self,
@@ -483,10 +484,10 @@ class TestRetrieveFollowLists:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == Follow.objects.count() == 2
+        assert response.data.get("count") == Follow.objects.count() == 2
         assert Profile.objects.count() == 4
-
-        for follower in response.data:
+        results = response.data.get("results")
+        for follower in results:
             assert follower.get("id") in [profile.id, sample_profile.id]
             assert not follower.get("follows_you")
             assert not follower.get("is_following")
@@ -496,7 +497,7 @@ class TestRetrieveFollowLists:
 
         following = other_profile.follows.all().order_by("id")
         serializer = SimpleUserProfileSerializer(following, many=True)
-        assert response.data == serializer.data
+        assert results == serializer.data
 
     def test_anonymous_user_list_a_profiles_following_returns_401(
         self,
@@ -546,12 +547,13 @@ class TestRetrieveFollowLists:
 
         assert response.status_code == status.HTTP_200_OK
         assert Follow.objects.count() == 5
-        assert len(response.data) == 2
+        assert response.data.get("count") == 2
         profiles_i_follow = sample_profile.follows.all()
         followers_i_know = other_profile.followed_by.filter(
             id__in=profiles_i_follow
         ).order_by("id")
-        for follower in response.data:
+        results = response.data.get("results")
+        for follower in results:
             assert follower.get("id") in [profile1.id, profile2.id]
             assert follower.get("id") != profile3.id
             assert not follower.get("follows_you")
@@ -561,7 +563,7 @@ class TestRetrieveFollowLists:
             follower = pop_extra_keys(follower)
 
         serializer = SimpleUserProfileSerializer(followers_i_know, many=True)
-        assert response.data == serializer.data
+        assert results == serializer.data
 
     def test_anonymous_user_list_profiles_i_know_returns_401(
         self,
