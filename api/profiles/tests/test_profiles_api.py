@@ -225,6 +225,8 @@ class TestRetrieveProfileMe:
 
         serializer = UserProfileSerializer(sample_profile)
         assert response.data == serializer.data
+        assert not response.data.get("is_following")
+        assert not response.data.get("follows_you")
         assert len(response.data.get("user")) == 4
         assert response.status_code == status.HTTP_200_OK
         assert Profile.objects.all().count() == 1
