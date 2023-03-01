@@ -22,7 +22,18 @@ class SimpleUserSerializer(serializers.ModelSerializer):
         ]
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
+class SimpleUserSerializerWithDateJoined(SimpleUserSerializer):
+    """SimpleUserSerializer with date_joined field included."""
+
+    class Meta(SimpleUserSerializer.Meta):
+        """Simple user serializer with date_joined meta class."""
+
+        fields = SimpleUserSerializer.Meta.fields + [
+            "date_joined",
+        ]
+
+
+class SimpleUserProfileSerializer(serializers.ModelSerializer):
     """Simple serializer for the profile model."""
 
     user = SimpleUserSerializer()
@@ -30,7 +41,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     follows_you = serializers.BooleanField(required=False)
 
     class Meta:
-        """User Profile serializer Meta class."""
+        """Simple User Profile serializer Meta class."""
 
         model = Profile
         fields = [
@@ -41,6 +52,26 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "image",
             "is_following",
             "follows_you",
+        ]
+
+
+class UserProfileSerializer(SimpleUserProfileSerializer):
+    """Serializer for the profile model."""
+
+    user = SimpleUserSerializerWithDateJoined()
+    following_count = serializers.IntegerField(required=False)
+    followers_count = serializers.IntegerField(required=False)
+
+    class Meta(SimpleUserProfileSerializer.Meta):
+        """User Profile serializer Meta class."""
+
+        fields = SimpleUserProfileSerializer.Meta.fields + [
+            "birth_date",
+            "location",
+            "website",
+            "is_suspended",
+            "following_count",
+            "followers_count",
         ]
 
 
