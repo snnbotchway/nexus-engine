@@ -1,8 +1,6 @@
 """Helpers for the profiles app."""
 from django.db.models import BooleanField, Case, Exists, OuterRef, Value, When
 from django.shortcuts import get_object_or_404
-from rest_framework import status
-from rest_framework.response import Response
 
 from .models import Follow, Profile
 
@@ -96,5 +94,9 @@ class ProfileViewSetHelper:
             .filter(id__in=queryset)
             .order_by("id")
         )
-        serializer = self.get_serializer(profiles, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        paginator = self.pagination_class()
+        paginator.page_size = 40
+        paginated_profiles = paginator.paginate_queryset(profiles, self.request)
+        serializer = self.get_serializer(paginated_profiles, many=True)
+        return paginator.get_paginated_response(serializer.data)

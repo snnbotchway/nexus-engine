@@ -2,6 +2,7 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -25,8 +26,9 @@ class ProfileViewSet(
 ):
     """The Profile view set."""
 
-    queryset = Profile.objects.all()
+    pagination_class = PageNumberPagination
     permission_classes = [IsAuthenticated]
+    queryset = Profile.objects.all()
 
     def get_permissions(self):
         """Allow anyone to get a profile."""
