@@ -72,7 +72,7 @@ def follow_payload(other_profile):
 
 @pytest.fixture
 def pop_extra_keys():
-    """Pop is_following and follows_you from a dictionary."""
+    """Pop extra keys from a dictionary."""
 
     def _pop_extra_keys(dictionary):
         keys = [
