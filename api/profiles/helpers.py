@@ -1,6 +1,7 @@
 """Helpers for the profiles app."""
 from django.db.models import BooleanField, Case, Exists, OuterRef, Value, When
 from django.shortcuts import get_object_or_404
+from rest_framework.serializers import ValidationError
 
 from .models import Follow, Profile
 
@@ -30,6 +31,10 @@ class ProfileViewSetHelper:
     def get_profiles_with_follow_info(self):
         """Return a queryset of profiles annotated with follow information."""
         current_profile = self.get_current_profile()
+
+        if not current_profile:
+            raise ValidationError({"detail": "Profile not found for current user."})
+
         return Profile.objects.annotate(
             is_following=Case(
                 When(pk=current_profile.pk, then=Value(None)),
