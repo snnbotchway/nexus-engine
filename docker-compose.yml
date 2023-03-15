@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      args:
+        - DEV=true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/api
+      - dev-static-data:/vol/web
+    command: >
+      sh -c "python manage.py wait_for_db &&
+             python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgresql://devuser:changeme@db:5432/devdb
+      - IS_DOCKER=1
+      - SECRET_KEY=changeme
+      - EMAIL_HOST=smtp4dev
+      - EMAIL_HOST_USER=
+      - EMAIL_HOST_PASSWORD=
+      - EMAIL_PORT=25
+      - DEFAULT_FROM_EMAIL=from@snnbotchway.com
+      - CLIENT_DOMAIN=client_url.com
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - SOCIAL_AUTH_ALLOWED_REDIRECT_URIS=http://127.0.0.1:3000,http://127.0.0.1:3000/home,http://127.0.0.1:3000/login
+      - SOCIAL_AUTH_GOOGLE_OAUTH2_KEY=${SOCIAL_AUTH_GOOGLE_OAUTH2_KEY}
+      - SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET=${SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET}
+    depends_on:
+      - db
+      - smtp4dev
+
+  db:
+    image: postgres:13-alpine
+    ports:
+      - 6432:5432
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=devdb
+      - POSTGRES_USER=devuser
+      - POSTGRES_PASSWORD=changeme
+
+  smtp4dev:
+    image: rnwood/smtp4dev
+    ports:
+      - "3001:80"
+      - "2525:25"
+    volumes:
+      - smtp4dev-data:/smtp4dev
+
+volumes:
+  dev-db-data:
+  dev-static-data:
+  smtp4dev-data:
